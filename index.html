@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Skin Creator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <h2>Skin Creator</h2>
+            <div class="category">
+                <span>Corps</span>
+                <button class="add-btn" data-url="https://i.ibb.co/r26V6sjv/testskin.png" data-name="Base Steve">👤 Ma Base</button>
+            </div>
+            <div class="category">
+                <span>Accessoires</span>
+                <button class="add-btn" data-url="https://i.imgur.com/39G99oB.png" data-name="Yeux Bleus">👁️ Yeux Bleus</button>
+            </div>
+        </aside>
+
+        <main id="viewer-container">
+            <canvas id="skin_container"></canvas>
+        </main>
+
+        <aside class="layers-panel">
+            <h3>Calques</h3>
+            <div id="layer-list"></div>
+            <button id="download-btn">💾 Télécharger PNG</button>
+        </aside>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
