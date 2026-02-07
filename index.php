@@ -1,3 +1,6 @@
+<?php
+// On peut déclarer des variables ici plus tard (ex: liste des skins)
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5,7 +8,8 @@
     <title>Minecraft Skin Creator</title>
     <link rel="stylesheet" href="style.css">
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r104/three.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r104/examples/js/controls/OrbitControls.js"></script>
     
     <script src="skin_viewer.js"></script>
@@ -31,6 +35,7 @@
             <button id="download-btn" class="main-btn-download">💾 Télécharger le Skin</button>
         </aside>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
