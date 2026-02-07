@@ -1,14 +1,14 @@
-import * as skinview3d from "https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-alpha.2/bundles/skinview3d.bundle.js";
-
 let viewer;
 const PROXY = "https://corsproxy.io/?";
 
-async function init() {
+function init() {
     const container = document.getElementById("viewer-container");
+    // Initialisation via la librairie chargée dans le HTML
     viewer = new skinview3d.SkinViewer({
         canvas: document.getElementById("skin_container"),
         width: container.offsetWidth,
-        height: container.offsetHeight
+        height: container.offsetHeight,
+        skin: "https://bsat999.github.io/skinview3d/img/steve.png"
     });
 
     viewer.animations.add(skinview3d.IdleAnimation);
@@ -71,9 +71,12 @@ function download() {
     link.click();
 }
 
+// On lance quand la page est prête
 window.onload = init;
 window.onresize = () => {
     const container = document.getElementById("viewer-container");
-    viewer.width = container.offsetWidth;
-    viewer.height = container.offsetHeight;
+    if(viewer) {
+        viewer.width = container.offsetWidth;
+        viewer.height = container.offsetHeight;
+    }
 };
