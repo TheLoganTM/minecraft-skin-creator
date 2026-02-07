@@ -5,7 +5,7 @@ function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // Initialisation du viewer
+    // 1. Initialisation du personnage
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -13,20 +13,27 @@ function init() {
         skin: "https://minotar.net/skin/char" 
     });
 
-    // Configuration des contrôles
+    // 2. Configuration des contrôles de souris (OrbitControls)
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
-    controls.enableDamping = true; // Ajoute de l'inertie pour un mouvement fluide
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
+    
+    // --- RÉGLAGES SENSIBILITÉ ---
+    controls.rotateSpeed = 0.5; // On divise la vitesse par 2 (défaut est 1.0)
+    controls.zoomSpeed = 0.8;   // Zoom un peu plus doux
+    controls.enableDamping = true; // Ajoute une petite inertie fluide
+    controls.dampingFactor = 0.1;
+    
+    // --- RÉGLAGES CENTRAGE ---
+    // On force la caméra à regarder le milieu du corps du personnage
+    // Le personnage fait environ 30 unités de haut, donc on vise le milieu (y = -15)
+    controls.target.set(0, -15, 0); 
+    
+    controls.enablePan = false; // Empêche de décaler le perso hors de l'écran avec le clic droit
 
-    // On remplace la boucle d'animation par défaut pour inclure les contrôles
-    function animate() {
-        requestAnimationFrame(animate);
-        
-        // Mise à jour indispensable pour la souris
+    // 3. Boucle d'animation
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
         controls.update(); 
         
-        // Animation de marche (si elle existe)
         if (viewer.animation) {
             viewer.animation(viewer.playerObject, Date.now() / 1000);
         }
@@ -34,13 +41,13 @@ function init() {
         viewer.renderer.render(viewer.scene, viewer.camera);
     }
     
-    animate();
+    renderLoop();
 
-    // Boutons
+    // 4. Gestion des boutons
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
             viewer.skinImg.src = btn.dataset.url;
-            document.getElementById('layer-list').innerHTML = `<span>${btn.dataset.name}</span>`;
+            document.getElementById('layer-list').innerHTML = `<div class="layer-item"><span>${btn.dataset.name}</span></div>`;
         };
     });
 }
