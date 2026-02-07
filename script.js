@@ -2,38 +2,35 @@ let viewer;
 let controls;
 let layers = [];
 
+// Image de secours (Skin invisible de 1x1 pixel) pour éviter les lignes de code trop longues
+const EMPTY_SKIN = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAAAABA6W6oAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAQKADAAQAAAABAAAAQAAAAAB6379fAAAAA1JREFUWMPt0QENAAAAwqD3T20PBxQAAAAAAAAAAAAAAAAA8GY9Qf90m9r6mAAAAABJRU5ErkJggg==";
+
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // 1. Initialisation du moteur skinview3d
+    // 1. Initialisation
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
         height: parent.offsetHeight,
-        skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
+        skin: EMPTY_SKIN
     });
 
-    // 2. Chargement du fond avec sécurité CORS
+    // 2. Fond d'écran
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
-    loader.load(
-        'https://i.ibb.co/nNWLS5d2/unnamed.jpg', 
-        (texture) => {
-            viewer.scene.background = texture;
-        },
-        undefined,
-        (err) => {
-            console.warn("Fond non chargé, utilisation du fallback.");
-            viewer.scene.background = new THREE.Color(0x1a1a1a);
-        }
-    );
+    loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
+        viewer.scene.background = texture;
+    }, undefined, (err) => {
+        viewer.scene.background = new THREE.Color(0x1a1a1a);
+    });
 
-    // 3. Caméra reculée (80) et centrée sur le buste (-12)
+    // 3. Caméra et Animation
     viewer.camera.position.set(0, -12, 80);
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // 4. Contrôles Orbit
+    // 4. Contrôles
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
@@ -41,27 +38,23 @@ function init() {
     controls.target.set(0, -12, 0); 
     controls.update();
 
-    // 5. Initialisation des fonctions secondaires
+    // 5. Setup fonctions
     setupOutline();
     setupButtons();
 
-    // 6. Gestion du redimensionnement
     window.addEventListener('resize', onWindowResize);
 }
 
 function setupOutline() {
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
-    const bodyParts = [];
     viewer.playerObject.traverse((child) => {
-        if (child.isMesh && child.name !== "outline_part") bodyParts.push(child);
-    });
-
-    bodyParts.forEach((part) => {
-        const outlineMesh = part.clone();
-        outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.set(1.02, 1.02, 1.02);
-        outlineMesh.name = "outline_part";
-        part.add(outlineMesh);
+        if (child.isMesh && child.name !== "outline_part") {
+            const outlineMesh = child.clone();
+            outlineMesh.material = outlineMaterial;
+            outlineMesh.scale.set(1.05, 1.05, 1.05);
+            outlineMesh.name = "outline_part";
+            child.add(outlineMesh);
+        }
     });
 }
 
@@ -73,13 +66,16 @@ function setupButtons() {
         };
     });
 
-    document.getElementById('download-btn').onclick = () => {
-        if (layers.length === 0) return alert("Ajoute des éléments !");
-        const link = document.createElement('a');
-        link.download = 'skin_minecraft_custom.png';
-        link.href = viewer.skinImg.src;
-        link.click();
-    };
+    const dlBtn = document.getElementById('download-btn');
+    if (dlBtn) {
+        dlBtn.onclick = () => {
+            if (layers.length === 0) return alert("Ajoute des éléments !");
+            const link = document.createElement('a');
+            link.download = 'skin_minecraft_custom.png';
+            link.href = viewer.skinImg.src;
+            link.click();
+        };
+    }
 }
 
 function onWindowResize() {
@@ -102,14 +98,12 @@ async function composeSkins(urls) {
         });
     });
     const images = await Promise.all(promises);
-    const maxWidth = Math.max(...images.map(img => img.width));
-    const maxHeight = Math.max(...images.map(img => img.height));
     const canvas = document.createElement('canvas');
-    canvas.width = maxWidth; 
-    canvas.height = maxHeight;
+    canvas.width = 64; 
+    canvas.height = 64;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    images.forEach(img => ctx.drawImage(img, 0, 0, maxWidth, maxHeight));
+    images.forEach(img => ctx.drawImage(img, 0, 0, 64, 64));
     return canvas.toDataURL("image/png");
 }
 
@@ -118,4 +112,47 @@ async function refreshProject() {
     list.innerHTML = "";
     
     if (layers.length === 0) {
-        viewer.skinImg.src = "data:image
+        viewer.skinImg.src = EMPTY_SKIN;
+        toggleOutline(true);
+        return;
+    }
+
+    toggleOutline(false);
+    const mergedSkin = await composeSkins(layers.map(l => l.url));
+    viewer.skinImg.src = mergedSkin;
+
+    [...layers].reverse().forEach((layer) => {
+        const idx = layers.indexOf(layer);
+        list.innerHTML += `
+            <div class="layer-item">
+                <span>✨ ${layer.name}</span>
+                <div class="layer-controls">
+                    <button onclick="moveLayer(${idx}, 1)">↑</button>
+                    <button onclick="moveLayer(${idx}, -1)">↓</button>
+                    <button class="delete-layer" onclick="removeLayer(${idx})">❌</button>
+                </div>
+            </div>`;
+    });
+}
+
+function moveLayer(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex >= 0 && newIndex < layers.length) {
+        const element = layers.splice(index, 1)[0];
+        layers.splice(newIndex, 0, element);
+        refreshProject();
+    }
+}
+
+function removeLayer(index) {
+    layers.splice(index, 1);
+    refreshProject();
+}
+
+function toggleOutline(visible) {
+    viewer.playerObject.traverse((child) => {
+        if (child.name === "outline_part") child.visible = visible;
+    });
+}
+
+window.onload = init;
