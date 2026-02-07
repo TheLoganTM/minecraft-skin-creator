@@ -1,6 +1,3 @@
-<?php
-// Ce bloc permet au serveur de traiter le fichier comme du PHP
-?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
