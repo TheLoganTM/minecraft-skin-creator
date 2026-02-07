@@ -6,7 +6,7 @@ function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // Initialisation
+    // Initialisation du viewer
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -14,37 +14,35 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // --- FIX QUALITÉ UHD (Pixel Perfect) ---
+    // QUALITÉ UHD : On force le rendu net (Nearest Neighbor)
     viewer.renderer.magFilter = THREE.NearestFilter;
     viewer.renderer.minFilter = THREE.NearestFilter;
 
+    // OrbitControls pour la rotation
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
-    controls.rotateSpeed = 0.15;
-    controls.zoomSpeed = 0.5;
-    controls.target.set(0, -15, 0);
     controls.enableDamping = true;
+    controls.target.set(0, -15, 0);
 
-    // --- CRÉATION SÉCURISÉE DU CONTOUR ---
+    // CRÉATION DU CONTOUR (Sécurisée contre la boucle infinie)
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
-    const realParts = [];
+    const meshesToOutline = [];
     
-    // On liste d'abord les membres SANS les modifier pour éviter la boucle infinie
     viewer.playerObject.traverse((child) => {
         if (child.isMesh && child.name !== "outline_part") {
-            realParts.push(child);
+            meshesToOutline.push(child);
         }
     });
 
-    // Maintenant on ajoute les contours
-    realParts.forEach((part) => {
-        const outlineMesh = part.clone();
-        outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.set(1.01, 1.01, 1.01); // Contour très fin (ajuste si besoin)
-        outlineMesh.name = "outline_part";
-        part.add(outlineMesh);
+    meshesToOutline.forEach((mesh) => {
+        const outline = mesh.clone();
+        outline.material = outlineMaterial;
+        // 1.025 est idéal pour un contour de ~2px sur du UHD
+        outline.scale.set(1.025, 1.025, 1.025);
+        outline.name = "outline_part";
+        mesh.add(outline);
     });
 
-    // Actions
+    // Événements
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
             layers.push({ id: Date.now(), name: btn.dataset.name, url: btn.dataset.url });
@@ -62,32 +60,31 @@ function init() {
     renderLoop();
 }
 
-// --- FUSION UHD SANS LIMITE DE PIXELS ---
+// FUSION UHD PIXEL-PERFECT
 async function composeSkins(urls) {
-    const promises = urls.map(url => {
+    const images = await Promise.all(urls.map(url => {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.src = url;
             img.onload = () => resolve(img);
-            img.onerror = () => resolve(null); // Évite de bloquer si une image manque
+            img.onerror = () => resolve(null);
         });
-    });
+    }));
 
-    const images = (await Promise.all(promises)).filter(img => img !== null);
-    if (images.length === 0) return null;
+    const validImages = images.filter(img => img !== null);
+    if (validImages.length === 0) return null;
 
-    // Détection auto de la taille max (256, 512, etc.)
-    const maxWidth = Math.max(...images.map(img => img.width));
-    const maxHeight = Math.max(...images.map(img => img.height));
+    const maxWidth = Math.max(...validImages.map(img => img.width));
+    const maxHeight = Math.max(...validImages.map(img => img.height));
 
     const canvas = document.createElement('canvas');
     canvas.width = maxWidth;
     canvas.height = maxHeight;
     const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false; // Garde les pixels UHD nets
+    ctx.imageSmoothingEnabled = false; // Désactiver le flou
 
-    images.forEach(img => {
+    validImages.forEach(img => {
         ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
     });
 
@@ -99,36 +96,38 @@ async function refreshProject() {
     list.innerHTML = "";
 
     if (layers.length === 0) {
-        viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
-        toggleOutline(true); // Affiche le contour blanc si vide
+        viewer.loadSkin("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=");
+        toggleOutline(true);
         return;
     }
 
-    toggleOutline(false); // Cache le contour si un skin est chargé
-    const mergedSkin = await composeSkins(layers.map(l => l.url));
-    if (mergedSkin) viewer.skinImg.src = mergedSkin;
+    toggleOutline(false);
+    const result = await composeSkins(layers.map(l => l.url));
+    if (result) {
+        viewer.loadSkin(result);
+    }
 
-    [...layers].reverse().forEach((layer, index) => {
-        const realIdx = layers.indexOf(layer);
+    [...layers].reverse().forEach((layer) => {
+        const idx = layers.indexOf(layer);
         list.innerHTML += `
             <div class="layer-item">
                 <span>✨ ${layer.name}</span>
                 <div class="layer-controls">
-                    <button onclick="moveLayer(${realIdx}, 1)">↑</button>
-                    <button onclick="moveLayer(${realIdx}, -1)">↓</button>
-                    <button class="delete-layer" onclick="removeLayer(${realIdx})">❌</button>
+                    <button onclick="moveLayer(${idx}, 1)">↑</button>
+                    <button onclick="moveLayer(${idx}, -1)">↓</button>
+                    <button class="delete-layer" onclick="removeLayer(${idx})">❌</button>
                 </div>
             </div>`;
     });
 }
 
 async function downloadSkin() {
-    if (layers.length === 0) return alert("Rien à télécharger !");
+    if (layers.length === 0) return;
     const data = await composeSkins(layers.map(l => l.url));
-    const link = document.createElement('a');
-    link.download = 'skin_uhd_final.png';
-    link.href = data;
-    link.click();
+    const a = document.createElement('a');
+    a.href = data;
+    a.download = 'skin_uhd.png';
+    a.click();
 }
 
 function moveLayer(index, direction) {
