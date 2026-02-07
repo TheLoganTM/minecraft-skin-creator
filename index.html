@@ -2,32 +2,43 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Skin UHD Editor</title>
+    <title>Minecraft UHD Editor - Ethane & Kitty</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/skinview3d@2.5.0/dist/bundle.js"></script>
 </head>
 <body>
 
-    <div id="viewer-container">
-        <div id="skin_container"></div>
-    </div>
+    <div class="app-container">
+        <aside class="sidebar left-bar">
+            <h3>🗂️ Calques Actifs</h3>
+            <div id="layer-list">
+                <p class="empty-msg">Aucun calque sélectionné</p>
+            </div>
+        </aside>
 
-    <div id="interface">
-        <h2>Éléments</h2>
-        <button id="download-btn" class="main-btn">📥 Télécharger le skin final</button>
+        <main id="viewer-container">
+            <div id="skin_container"></div>
+            <div class="top-controls">
+                <button id="download-btn" class="main-btn">📥 Télécharger le skin final</button>
+            </div>
+        </main>
 
-        <div class="selection-zone">
-            <h3>Ajouter des calques</h3>
+        <aside class="sidebar right-bar">
+            <h3>✨ Personnages</h3>
+            <div class="selection-zone">
                 <button class="add-btn" data-url="https://i.ibb.co/s9DRkM8Y/Ethane-V2.png" data-name="Ethane">🛡️1 Ethane (UHD)</button>
                 <button class="add-btn" data-url="https://i.ibb.co/JRXC1bHB/Kitty.png" data-name="Kitty">👤 Kitty</button>
-          </div>
-
-        <hr>
-        <div id="layer-list"></div>
+            </div>
+            
+            <hr>
+            <div class="info-box">
+                <p><small>Statut : <b>Prêt</b></small></p>
+                <p><small>Mode : <b>UHD Adaptatif</b></small></p>
+            </div>
+        </aside>
     </div>
 
     <script src="script.js"></script>
 </body>
-</html>
 </html>
