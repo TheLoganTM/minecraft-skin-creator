@@ -19,7 +19,7 @@ function init() {
     // Fond d'écran
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
-    loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
+    loader.load('https://i.ibb.co/Z4C7kBg/image.png', (texture) => {
         texture.minFilter = THREE.LinearFilter;
         viewer.scene.background = texture;
     });
