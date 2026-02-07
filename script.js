@@ -2,30 +2,39 @@ let viewer;
 let controls;
 let layers = [];
 
-const EMPTY_SKIN = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAAAABA6W6oAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAQKADAAQAAAABAAAAQAAAAAB6379fAAAAA1JREFUWMPt0QENAAAAwqD3T20PBxQAAAAAAAAAAAAAAAAA8GY9Qf90m9r6mAAAAABJRU5ErkJggg==";
+// On remplace le Base64 par un lien direct vers une image 1x1 transparente
+const EMPTY_SKIN = "https://raw.githubusercontent.com/thelogantm/minecraft-skin-creator/main/transparent.png"; 
 
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
+    if (!container || !parent) return;
+
+    // 1. Initialisation avec une image vide externe
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
         height: parent.offsetHeight,
-        skin: EMPTY_SKIN
+        skin: "https://minotar.net/skin/char" // Skin de Steve par défaut pour éviter le bug Base64
     });
 
+    // 2. Fond d'écran optimisé
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
     loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
+        // Paramètres pour éviter le redimensionnement flou de Three.js r104
+        texture.minFilter = THREE.LinearFilter;
         viewer.scene.background = texture;
     }, undefined, () => {
         viewer.scene.background = new THREE.Color(0x1a1a1a);
     });
 
+    // 3. Caméra et Animation
     viewer.camera.position.set(0, -12, 80);
     viewer.animation = skinview3d.WalkingAnimation;
 
+    // 4. Contrôles
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
@@ -89,9 +98,10 @@ async function composeSkins(urls) {
             img.crossOrigin = "anonymous";
             img.src = url;
             img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
         });
     });
-    const images = await Promise.all(promises);
+    const images = (await Promise.all(promises)).filter(img => img !== null);
     const canvas = document.createElement('canvas');
     canvas.width = 64; 
     canvas.height = 64;
@@ -104,17 +114,26 @@ async function composeSkins(urls) {
 async function refreshProject() {
     const list = document.getElementById('layer-list');
     list.innerHTML = "";
+    
     if (layers.length === 0) {
-        viewer.skinImg.src = EMPTY_SKIN;
+        viewer.skinImg.src = "https://minotar.net/skin/char";
         toggleOutline(true);
         return;
     }
+
     toggleOutline(false);
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
+
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
-        list.innerHTML += `<div class="layer-item"><span>✨ ${layer.name}</span><div class="layer-controls"><button onclick="moveLayer(${idx}, 1)">↑</button><button onclick="moveLayer(${idx}, -1)">↓</button><button class="delete-layer" onclick="removeLayer(${idx})">❌</button></div></div>`;
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+        item.innerHTML = `<span>✨ ${layer.name}</span><div class="layer-controls">` +
+            `<button onclick="moveLayer(${idx}, 1)">↑</button>` +
+            `<button onclick="moveLayer(${idx}, -1)">↓</button>` +
+            `<button class="delete-layer" onclick="removeLayer(${idx})">❌</button></div>`;
+        list.appendChild(item);
     });
 }
 
