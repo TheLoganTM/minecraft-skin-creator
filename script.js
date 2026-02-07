@@ -1,88 +1,69 @@
 let viewer;
-// Le proxy est indispensable pour que ton site puisse lire les images de ibb.co ou imgur
 const PROXY = "https://corsproxy.io/?";
 
 function init() {
-    const container = document.getElementById("viewer-container");
-    
-    // Initialisation du rendu 3D
+    const container = document.getElementById("skin_container");
+    const parent = document.getElementById("viewer-container");
+
+    // Initialisation basée sur ton fichier skin_viewer.js
     viewer = new skinview3d.SkinViewer({
-        canvas: document.getElementById("skin_container"),
-        width: container.offsetWidth,
-        height: container.offsetHeight,
-        skin: "https://bsat999.github.io/skinview3d/img/steve.png" // Skin de départ
+        domElement: container,
+        width: parent.offsetWidth,
+        height: parent.offsetHeight,
+        skin: "https://bsat999.github.io/skinview3d/img/steve.png"
     });
 
-    viewer.loadAnimation(skinview3d.IdleAnimation);
-    viewer.controls.enableRotate = true;
+    // Activer l'animation de marche par défaut
+    viewer.animation = skinview3d.WalkingAnimation;
 
-    // Gestion des boutons d'ajout
+    // Configuration des boutons
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => addLayer(btn.dataset.url, btn.dataset.name);
     });
-
+    
     document.getElementById('download-btn').onclick = download;
 }
 
-// CETTE FONCTION FAIT LA FUSION (Comme dans MinecraftSkinComposer)
-async function updateFullSkin() {
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = 64;
-    finalCanvas.height = 64;
-    const ctx = finalCanvas.getContext('2d');
+async function composeSkin() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
 
-    // On récupère tous les calques dans l'ordre (du bas vers le haut)
     const layers = [...document.querySelectorAll('.layer-item')].reverse();
-    
+    ctx.clearRect(0, 0, 64, 64);
+
     for (const layer of layers) {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = PROXY + encodeURIComponent(layer.dataset.url);
-
-        await new Promise((resolve) => {
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0); // On dessine le calque par-dessus les autres
-                resolve();
-            };
-            img.onerror = resolve; // Si une image bug, on passe à la suivante
+        
+        await new Promise(res => {
+            img.onload = () => { ctx.drawImage(img, 0, 0); res(); };
+            img.onerror = res;
         });
     }
-
-    // On applique l'image fusionnée au personnage 3D
-    viewer.loadSkin(finalCanvas.toDataURL());
+    // Mise à jour de la texture 3D
+    viewer.skinImg.src = canvas.toDataURL();
 }
 
 function addLayer(url, name) {
     const list = document.getElementById('layer-list');
-    const item = document.createElement('div');
-    item.className = 'layer-item';
-    item.dataset.url = url;
-    item.innerHTML = `
-        <span>${name}</span>
-        <button class="remove-btn">✕</button>
-    `;
+    const div = document.createElement('div');
+    div.className = 'layer-item';
+    div.dataset.url = url;
+    div.innerHTML = `<span>${name}</span><button class="remove-btn">✕</button>`;
 
-    item.querySelector('.remove-btn').onclick = () => {
-        item.remove();
-        updateFullSkin();
-    };
-
-    list.insertBefore(item, list.firstChild);
-    updateFullSkin();
+    div.querySelector('.remove-btn').onclick = () => { div.remove(); composeSkin(); };
+    list.insertBefore(div, list.firstChild);
+    composeSkin();
 }
 
 function download() {
     const link = document.createElement('a');
-    link.download = 'mon_skin_compose.png';
-    link.href = viewer.canvas.toDataURL();
+    link.download = 'mon_skin.png';
+    // Accès au canvas interne créé par skin_viewer.js
+    link.href = viewer.renderer.domElement.toDataURL();
     link.click();
 }
 
 window.onload = init;
-window.onresize = () => {
-    if (viewer) {
-        const container = document.getElementById("viewer-container");
-        viewer.width = container.offsetWidth;
-        viewer.height = container.offsetHeight;
-    }
-};
