@@ -6,7 +6,7 @@ function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // 1. Initialisation du Viewer
+    // Initialisation du moteur
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -14,14 +14,17 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // 2. Configuration des contrôles Orbit (r104)
+    // ACTIVATION DE LA MARCHE
+    viewer.animation = skinview3d.WalkingAnimation;
+
+    // Configuration des contrôles caméra
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
     controls.target.set(0, -15, 0);
     controls.enableDamping = true;
 
-    // 3. Système de Contour (Outline)
+    // Système de Contour (Outline)
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
     const bodyParts = [];
     
@@ -37,29 +40,24 @@ function init() {
         part.add(outlineMesh);
     });
 
-    // 4. Gestion des boutons d'ajout
+    // Boutons d'ajout
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
-            layers.push({ 
-                id: Date.now(), 
-                name: btn.dataset.name, 
-                url: btn.dataset.url 
-            });
+            layers.push({ id: Date.now(), name: btn.dataset.name, url: btn.dataset.url });
             refreshProject();
         };
     });
 
-    // 5. Gestion du téléchargement
+    // Logique du bouton Télécharger
     document.getElementById('download-btn').onclick = () => {
-        if (layers.length === 0) return alert("Le skin est vide !");
+        if (layers.length === 0) return alert("Ajoute des éléments avant de télécharger !");
         const link = document.createElement('a');
-        link.download = 'minecraft-skin-custom.png';
+        link.download = 'skin-minecraft-custom.png';
         link.href = viewer.skinImg.src;
         link.click();
     };
 }
 
-// Moteur de Fusion UHD
 async function composeSkins(urls) {
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -101,7 +99,6 @@ async function refreshProject() {
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
 
-    // Rendu de la liste des calques (Inversé pour que le haut de liste = calque du dessus)
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
         list.innerHTML += `
