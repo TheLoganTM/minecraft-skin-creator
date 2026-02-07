@@ -15,7 +15,7 @@ function init() {
     });
 
     // 2. Centrage de la caméra sur le buste (Y = -12)
-    viewer.camera.position.set(0, -12, 40);
+    viewer.camera.position.set(0, -12, 80);
 
     // 3. Activation de l'animation de marche
     viewer.animation = skinview3d.WalkingAnimation;
