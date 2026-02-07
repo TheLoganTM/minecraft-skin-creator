@@ -1,4 +1,5 @@
 let viewer;
+let controls;
 
 function init() {
     const container = document.getElementById("skin_container");
@@ -12,20 +13,34 @@ function init() {
         skin: "https://minotar.net/skin/char" 
     });
 
-    // ACTIVATION DU DÉPLACEMENT (SOURIS)
-    const controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
-    controls.enablePan = false; // Empêche de décentrer le perso
-    controls.enableZoom = true; // Permet de zoomer
+    // Configuration des contrôles
+    controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
+    controls.enableDamping = true; // Ajoute de l'inertie pour un mouvement fluide
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
 
-    // Animation de marche
-    viewer.animation = skinview3d.WalkingAnimation;
+    // On remplace la boucle d'animation par défaut pour inclure les contrôles
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        // Mise à jour indispensable pour la souris
+        controls.update(); 
+        
+        // Animation de marche (si elle existe)
+        if (viewer.animation) {
+            viewer.animation(viewer.playerObject, Date.now() / 1000);
+        }
+        
+        viewer.renderer.render(viewer.scene, viewer.camera);
+    }
+    
+    animate();
 
-    // Gestion des boutons
+    // Boutons
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
             viewer.skinImg.src = btn.dataset.url;
-            const list = document.getElementById('layer-list');
-            list.innerHTML = `<div class="layer-item"><span>${btn.dataset.name}</span></div>`;
+            document.getElementById('layer-list').innerHTML = `<span>${btn.dataset.name}</span>`;
         };
     });
 }
