@@ -2,8 +2,12 @@ let viewer;
 let controls;
 let layers = [];
 
-// On remplace le Base64 par un lien direct vers une image 1x1 transparente
-const EMPTY_SKIN = "https://raw.githubusercontent.com/thelogantm/minecraft-skin-creator/main/transparent.png"; 
+// Fonction pour créer une image transparente de 64x64 instantanément
+function createEmptySkin() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    return canvas.toDataURL();
+}
 
 function init() {
     const container = document.getElementById("skin_container");
@@ -11,30 +15,30 @@ function init() {
 
     if (!container || !parent) return;
 
-    // 1. Initialisation avec une image vide externe
+    // 1. Initialisation avec un skin vide généré proprement
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
         height: parent.offsetHeight,
-        skin: "https://minotar.net/skin/char" // Skin de Steve par défaut pour éviter le bug Base64
+        skin: createEmptySkin()
     });
 
-    // 2. Fond d'écran optimisé
+    // 2. Chargement du fond d'écran
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
     loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
-        // Paramètres pour éviter le redimensionnement flou de Three.js r104
+        // Empêche le redimensionnement flou (Power of Two) de Three.js
         texture.minFilter = THREE.LinearFilter;
         viewer.scene.background = texture;
     }, undefined, () => {
         viewer.scene.background = new THREE.Color(0x1a1a1a);
     });
 
-    // 3. Caméra et Animation
+    // 3. Caméra (reculée à 80) et Animation
     viewer.camera.position.set(0, -12, 80);
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // 4. Contrôles
+    // 4. Contrôles Orbit
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
@@ -48,6 +52,7 @@ function init() {
     window.addEventListener('resize', onWindowResize);
 }
 
+// --- SYSTÈME DE CONTOURS ---
 function setupOutline() {
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
     viewer.playerObject.traverse((child) => {
@@ -61,6 +66,7 @@ function setupOutline() {
     });
 }
 
+// --- GESTION DES BOUTONS ---
 function setupButtons() {
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
@@ -72,25 +78,16 @@ function setupButtons() {
     const dlBtn = document.getElementById('download-btn');
     if (dlBtn) {
         dlBtn.onclick = () => {
-            if (layers.length === 0) return alert("Ajoute des éléments !");
+            if (layers.length === 0) return alert("Le skin est vide !");
             const link = document.createElement('a');
-            link.download = 'skin_minecraft_custom.png';
+            link.download = 'minecraft-skin-custom.png';
             link.href = viewer.skinImg.src;
             link.click();
         };
     }
 }
 
-function onWindowResize() {
-    const parent = document.getElementById("viewer-container");
-    if (!parent || !viewer) return;
-    viewer.width = parent.offsetWidth;
-    viewer.height = parent.offsetHeight;
-    viewer.renderer.setSize(parent.offsetWidth, parent.offsetHeight);
-    viewer.camera.aspect = parent.offsetWidth / parent.offsetHeight;
-    viewer.camera.updateProjectionMatrix();
-}
-
+// --- FUSION DES CALQUES ---
 async function composeSkins(urls) {
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -103,8 +100,7 @@ async function composeSkins(urls) {
     });
     const images = (await Promise.all(promises)).filter(img => img !== null);
     const canvas = document.createElement('canvas');
-    canvas.width = 64; 
-    canvas.height = 64;
+    canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     images.forEach(img => ctx.drawImage(img, 0, 0, 64, 64));
@@ -116,7 +112,7 @@ async function refreshProject() {
     list.innerHTML = "";
     
     if (layers.length === 0) {
-        viewer.skinImg.src = "https://minotar.net/skin/char";
+        viewer.skinImg.src = createEmptySkin();
         toggleOutline(true);
         return;
     }
@@ -137,6 +133,7 @@ async function refreshProject() {
     });
 }
 
+// --- UTILITAIRES ---
 function moveLayer(index, direction) {
     const newIndex = index + direction;
     if (newIndex >= 0 && newIndex < layers.length) {
@@ -155,6 +152,15 @@ function toggleOutline(visible) {
     viewer.playerObject.traverse((child) => {
         if (child.name === "outline_part") child.visible = visible;
     });
+}
+
+function onWindowResize() {
+    const parent = document.getElementById("viewer-container");
+    viewer.width = parent.offsetWidth;
+    viewer.height = parent.offsetHeight;
+    viewer.renderer.setSize(parent.offsetWidth, parent.offsetHeight);
+    viewer.camera.aspect = parent.offsetWidth / parent.offsetHeight;
+    viewer.camera.updateProjectionMatrix();
 }
 
 window.onload = init;
