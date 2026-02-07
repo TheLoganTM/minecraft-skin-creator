@@ -2,34 +2,18 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Skin Composer</title>
+    <title>Minecraft Skin Creator</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/skinview3d@2.4.0/bundles/skinview3d.bundle.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="skinview3d.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <h2>Éléments</h2>
-            <div class="category">
-                <span>Base</span>
-                <button class="add-btn" data-url="https://i.ibb.co/r26V6sjv/testskin.png" data-name="Corps">👤 Corps de base</button>
-            </div>
-            <div class="category">
-                <span>Visage</span>
-                <button class="add-btn" data-url="https://i.imgur.com/39G99oB.png" data-name="Yeux">👁️ Yeux Bleus</button>
-            </div>
-        </aside>
+    <main id="viewer-container">
+        <div id="skin_container"></div>
+    </main>
 
-        <main id="viewer-container">
-            <canvas id="skin_container"></canvas>
-        </main>
-
-        <aside class="layers-panel">
-            <h3>Mes Calques</h3>
-            <div id="layer-list"></div>
-            <button id="download-btn">💾 Enregistrer le Skin</button>
-        </aside>
-    </div>
     <script src="script.js"></script>
 </body>
 </html>
