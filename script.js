@@ -1,6 +1,5 @@
 let viewer;
 let controls;
-let outlineGroup; // On le déclare en dehors pour y accéder partout
 
 function init() {
     const container = document.getElementById("skin_container");
@@ -14,77 +13,85 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // 2. Configuration des contrôles
+    // 2. Configuration des contrôles (OrbitControls)
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15; 
     controls.zoomSpeed = 0.5;
     controls.target.set(0, -15, 0); 
     controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
     controls.enablePan = false;
 
-    // 3. Création du CONTOUR ANIMÉ
+    // 3. CRÉATION DU CONTOUR UNIQUE (Attaché au personnage)
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
-    outlineGroup = viewer.playerObject.clone();
     
-    outlineGroup.traverse((child) => {
+    // On parcourt chaque partie du corps pour lui ajouter son propre contour
+    viewer.playerObject.traverse((child) => {
         if (child.isMesh) {
-            child.material = outlineMaterial;
-            child.scale.multiplyScalar(1.05); 
+            const outlineMesh = child.clone();
+            outlineMesh.material = outlineMaterial;
+            outlineMesh.scale.multiplyScalar(1.07); // Épaisseur du contour
+            outlineMesh.name = "outline_part";    // Nom pour le retrouver facilement
+            child.add(outlineMesh);                // On l'attache au membre (Parent-Enfant)
         }
     });
-    viewer.scene.add(outlineGroup);
 
-    // 4. Boucle de rendu
+    // 4. BOUCLE DE RENDU
     function renderLoop() {
         requestAnimationFrame(renderLoop);
         controls.update(); 
         
-        // Animation synchronisée des deux modèles
         const time = Date.now() / 1000;
+        // L'animation ne s'applique qu'au personnage, le contour suit tout seul
         if (typeof skinview3d.WalkingAnimation === 'function') {
             skinview3d.WalkingAnimation(viewer.playerObject, time);
-            skinview3d.WalkingAnimation(outlineGroup, time);
         }
 
         viewer.renderer.render(viewer.scene, viewer.camera);
     }
     renderLoop();
 
-    // 5. Gestion des clics
+    // 5. GESTION DES BOUTONS
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
             viewer.skinImg.crossOrigin = "anonymous";
             viewer.skinImg.src = btn.dataset.url;
             
-            // Masquer le contour quand un skin est chargé
-            outlineGroup.visible = false;
-
+            toggleOutline(false); // Cache le contour quand on sélectionne
             updateLayerList(btn.dataset.name);
         };
     });
 }
 
-// Fonction pour mettre à jour et gérer la suppression
+// Fonction pour afficher/cacher le contour
+function toggleOutline(visible) {
+    viewer.playerObject.traverse((child) => {
+        if (child.name === "outline_part") {
+            child.visible = visible;
+        }
+    });
+}
+
+// Mise à jour de la liste des calques avec bouton supprimer
 function updateLayerList(name) {
     const list = document.getElementById('layer-list');
     list.innerHTML = `
-        <div class="layer-item" id="active-layer">
+        <div class="layer-item">
             <span>✨ ${name}</span>
             <button class="delete-layer" onclick="removeLayer()">❌</button>
         </div>
     `;
 }
 
-// Fonction pour supprimer le calque et remettre le contour
+// Suppression du calque et retour au mode "Fantôme"
 function removeLayer() {
     const list = document.getElementById('layer-list');
-    list.innerHTML = ""; // Vide la liste
+    list.innerHTML = ""; 
     
-    // Remettre le skin invisible
+    // Retour au skin invisible
     viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
     
-    // Réafficher le contour blanc animé
-    outlineGroup.visible = true;
+    toggleOutline(true); // Réaffiche le contour blanc
 }
 
 window.onresize = () => {
