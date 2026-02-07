@@ -2,46 +2,32 @@ let viewer;
 let controls;
 let layers = [];
 
-// Fonction pour créer une image transparente de 64x64 instantanément
-function createEmptySkin() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64; canvas.height = 64;
-    return canvas.toDataURL();
-}
+// Un pixel transparent unique pour servir de base invisible
+const INVISIBLE_SKIN = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    if (!container || !parent) return;
-
-    // 1. Initialisation avec un skin vide généré proprement
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
         height: parent.offsetHeight,
-        skin: createEmptySkin()
+        skin: INVISIBLE_SKIN
     });
 
-    // 2. Chargement du fond d'écran
+    // Fond d'écran
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
     loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
-        // Empêche le redimensionnement flou (Power of Two) de Three.js
         texture.minFilter = THREE.LinearFilter;
         viewer.scene.background = texture;
-    }, undefined, () => {
-        viewer.scene.background = new THREE.Color(0x1a1a1a);
     });
 
-    // 3. Caméra (reculée à 80) et Animation
     viewer.camera.position.set(0, -12, 80);
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // 4. Contrôles Orbit
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
-    controls.rotateSpeed = 0.15;
-    controls.zoomSpeed = 0.5;
     controls.enableDamping = true;
     controls.target.set(0, -12, 0); 
     controls.update();
@@ -52,21 +38,21 @@ function init() {
     window.addEventListener('resize', onWindowResize);
 }
 
-// --- SYSTÈME DE CONTOURS ---
 function setupOutline() {
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
     viewer.playerObject.traverse((child) => {
         if (child.isMesh && child.name !== "outline_part") {
             const outlineMesh = child.clone();
             outlineMesh.material = outlineMaterial;
-            outlineMesh.scale.set(1.05, 1.05, 1.05);
+            outlineMesh.scale.set(1.03, 1.03, 1.03);
             outlineMesh.name = "outline_part";
             child.add(outlineMesh);
         }
     });
+    // Au départ, pas de calques, donc outline visible
+    toggleOutline(true);
 }
 
-// --- GESTION DES BOUTONS ---
 function setupButtons() {
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
@@ -75,19 +61,16 @@ function setupButtons() {
         };
     });
 
-    const dlBtn = document.getElementById('download-btn');
-    if (dlBtn) {
-        dlBtn.onclick = () => {
-            if (layers.length === 0) return alert("Le skin est vide !");
-            const link = document.createElement('a');
-            link.download = 'minecraft-skin-custom.png';
-            link.href = viewer.skinImg.src;
-            link.click();
-        };
-    }
+    document.getElementById('download-btn').onclick = () => {
+        if (layers.length === 0) return alert("Le skin est vide !");
+        const link = document.createElement('a');
+        link.download = 'skin_minecraft_uhd.png';
+        link.href = viewer.skinImg.src;
+        link.click();
+    };
 }
 
-// --- FUSION DES CALQUES ---
+// FUSION UHD : Le canvas prend la taille de la plus grande image
 async function composeSkins(urls) {
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -98,12 +81,24 @@ async function composeSkins(urls) {
             img.onerror = () => resolve(null);
         });
     });
+
     const images = (await Promise.all(promises)).filter(img => img !== null);
+    if (images.length === 0) return INVISIBLE_SKIN;
+
+    // Détection de la résolution la plus haute (UHD)
+    const maxWidth = Math.max(...images.map(img => img.width));
+    const maxHeight = Math.max(...images.map(img => img.height));
+
     const canvas = document.createElement('canvas');
-    canvas.width = 64; canvas.height = 64;
+    canvas.width = maxWidth; 
+    canvas.height = maxHeight;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    images.forEach(img => ctx.drawImage(img, 0, 0, 64, 64));
+
+    images.forEach(img => {
+        ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
+    });
+
     return canvas.toDataURL("image/png");
 }
 
@@ -112,14 +107,13 @@ async function refreshProject() {
     list.innerHTML = "";
     
     if (layers.length === 0) {
-        viewer.skinImg.src = createEmptySkin();
-        toggleOutline(true);
-        return;
+        viewer.skinImg.src = INVISIBLE_SKIN;
+        toggleOutline(true); // Remet le contour blanc
+    } else {
+        toggleOutline(false); // Cache le contour blanc
+        const mergedSkin = await composeSkins(layers.map(l => l.url));
+        viewer.skinImg.src = mergedSkin;
     }
-
-    toggleOutline(false);
-    const mergedSkin = await composeSkins(layers.map(l => l.url));
-    viewer.skinImg.src = mergedSkin;
 
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
@@ -133,7 +127,6 @@ async function refreshProject() {
     });
 }
 
-// --- UTILITAIRES ---
 function moveLayer(index, direction) {
     const newIndex = index + direction;
     if (newIndex >= 0 && newIndex < layers.length) {
