@@ -1,12 +1,11 @@
 let viewer;
 let controls;
-let layers = []; // Stocke les calques {id, name, url}
+let layers = [];
 
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // 1. Initialisation avec skin invisible
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -14,34 +13,35 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // 2. Configuration des contrôles
+    // Forcer le rendu net pour l'UHD (évite le flou)
+    viewer.renderer.getContext().imageSmoothingEnabled = false;
+
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15; 
     controls.zoomSpeed = 0.5;
     controls.target.set(0, -15, 0); 
     controls.enableDamping = true;
 
-    // 3. CRÉATION SÉCURISÉE DU CONTOUR (Outline)
+    // --- CRÉATION DU CONTOUR FIN (Méthode sécurisée) ---
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
     
-    // On identifie d'abord les vrais membres du corps pour éviter la boucle infinie
-    const realBodyParts = [];
+    const bodyParts = [];
     viewer.playerObject.traverse((child) => {
+        // Sécurité : on ne liste que les vrais membres du perso
         if (child.isMesh && child.name !== "outline_part") {
-            realBodyParts.push(child);
+            bodyParts.push(child);
         }
     });
 
-    // On attache le contour uniquement à ces parties
-    realBodyParts.forEach((part) => {
+    bodyParts.forEach((part) => {
         const outlineMesh = part.clone();
         outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.multiplyScalar(1.07);
+        // 1.02 au lieu de 1.07 pour un contour très fin (environ 2px)
+        outlineMesh.scale.multiplyScalar(1.02); 
         outlineMesh.name = "outline_part"; 
         part.add(outlineMesh);
     });
 
-    // 4. Boucle de rendu
     function renderLoop() {
         requestAnimationFrame(renderLoop);
         controls.update(); 
@@ -52,21 +52,23 @@ function init() {
     }
     renderLoop();
 
-    // 5. Ajout de calque
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
-            const layer = { id: Date.now(), name: btn.dataset.name, url: btn.dataset.url };
-            layers.push(layer); // Ajoute à la fin (sera au-dessus)
+            layers.push({ id: Date.now(), name: btn.dataset.name, url: btn.dataset.url });
             refreshProject();
         };
     });
 }
 
-// FUSION DES IMAGES PNG (Ordre respecté)
+// FUSION UHD : On utilise un canvas plus grand (64x64) pour garder la précision
 async function composeSkins(urls) {
     const canvas = document.createElement('canvas');
-    canvas.width = 64; canvas.height = 64;
+    canvas.width = 64; 
+    canvas.height = 64;
     const ctx = canvas.getContext('2d');
+    
+    // Désactiver l'anti-aliasing pour garder les pixels nets
+    ctx.imageSmoothingEnabled = false;
 
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -78,8 +80,8 @@ async function composeSkins(urls) {
     });
 
     const images = await Promise.all(promises);
-    images.forEach(img => ctx.drawImage(img, 0, 0));
-    return canvas.toDataURL();
+    images.forEach(img => ctx.drawImage(img, 0, 0, 64, 64));
+    return canvas.toDataURL("image/png");
 }
 
 async function refreshProject() {
@@ -96,12 +98,11 @@ async function refreshProject() {
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
 
-    // Affichage des calques (Inverse pour que le "dessus" soit en haut de liste)
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
         list.innerHTML += `
             <div class="layer-item">
-                <span>${layer.name}</span>
+                <span>✨ ${layer.name}</span>
                 <div class="layer-controls">
                     <button onclick="moveLayer(${idx}, 1)">↑</button>
                     <button onclick="moveLayer(${idx}, -1)">↓</button>
