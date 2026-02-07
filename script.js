@@ -1,7 +1,6 @@
 let viewer;
 let controls;
-let outlineGroup;
-let layers = []; // Tableau pour stocker nos calques {id, name, url}
+let layers = [];
 
 function init() {
     const container = document.getElementById("skin_container");
@@ -20,16 +19,24 @@ function init() {
     controls.target.set(0, -15, 0); 
     controls.enableDamping = true;
 
-    // Création du contour unique
+    // --- CRÉATION SÉCURISÉE DU CONTOUR ---
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
+    
+    // On récupère les membres AVANT de commencer à ajouter des choses dedans
+    const bodyParts = [];
     viewer.playerObject.traverse((child) => {
-        if (child.isMesh) {
-            const outlineMesh = child.clone();
-            outlineMesh.material = outlineMaterial;
-            outlineMesh.scale.multiplyScalar(1.07);
-            outlineMesh.name = "outline_part";
-            child.add(outlineMesh);
+        if (child.isMesh && child.name !== "outline_part") {
+            bodyParts.push(child);
         }
+    });
+
+    // On applique le contour uniquement sur les vrais membres
+    bodyParts.forEach((part) => {
+        const outlineMesh = part.clone();
+        outlineMesh.material = outlineMaterial;
+        outlineMesh.scale.multiplyScalar(1.07);
+        outlineMesh.name = "outline_part"; 
+        part.add(outlineMesh);
     });
 
     function renderLoop() {
@@ -42,41 +49,50 @@ function init() {
     }
     renderLoop();
 
-    // Gestion des boutons d'ajout
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
-            const layer = {
-                id: Date.now(),
-                name: btn.dataset.name,
-                url: btn.dataset.url
-            };
+            const layer = { id: Date.now(), name: btn.dataset.name, url: btn.dataset.url };
             layers.push(layer);
             refreshProject();
         };
     });
 }
 
-// Rafraîchit tout : le rendu 3D et la liste visuelle
+// FUSION DES IMAGES (Version robuste)
+async function composeSkins(urls) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    const promises = urls.map(url => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = url;
+            img.onload = () => resolve(img);
+        });
+    });
+
+    const images = await Promise.all(promises);
+    images.forEach(img => ctx.drawImage(img, 0, 0));
+    return canvas.toDataURL();
+}
+
 async function refreshProject() {
     const list = document.getElementById('layer-list');
     list.innerHTML = "";
 
     if (layers.length === 0) {
-        // Retour mode fantôme
         viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
         toggleOutline(true);
         return;
     }
 
     toggleOutline(false);
-
-    // 1. Générer le skin fusionné (le dernier calque de la liste est au-dessus)
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
 
-    // 2. Afficher la liste (du haut vers le bas)
-    // On inverse pour que le calque du "dessus" soit en haut de la liste
-    [...layers].reverse().forEach((layer, index) => {
+    [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
         list.innerHTML += `
             <div class="layer-item">
@@ -88,28 +104,6 @@ async function refreshProject() {
                 </div>
             </div>
         `;
-    });
-}
-
-// Fusionne les images PNG sur un Canvas 64x64
-function composeSkins(urls) {
-    return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        let loaded = 0;
-
-        urls.forEach(url => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = url;
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0);
-                loaded++;
-                if (loaded === urls.length) resolve(canvas.toDataURL());
-            };
-        });
     });
 }
 
