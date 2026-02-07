@@ -2,14 +2,12 @@ let viewer;
 let controls;
 let layers = [];
 
-// Image de secours (Skin invisible de 1x1 pixel) pour éviter les lignes de code trop longues
 const EMPTY_SKIN = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAAAABA6W6oAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAQKADAAQAAAABAAAAQAAAAAB6379fAAAAA1JREFUWMPt0QENAAAAwqD3T20PBxQAAAAAAAAAAAAAAAAA8GY9Qf90m9r6mAAAAABJRU5ErkJggg==";
 
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // 1. Initialisation
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -17,20 +15,17 @@ function init() {
         skin: EMPTY_SKIN
     });
 
-    // 2. Fond d'écran
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous'); 
     loader.load('https://i.ibb.co/nNWLS5d2/unnamed.jpg', (texture) => {
         viewer.scene.background = texture;
-    }, undefined, (err) => {
+    }, undefined, () => {
         viewer.scene.background = new THREE.Color(0x1a1a1a);
     });
 
-    // 3. Caméra et Animation
     viewer.camera.position.set(0, -12, 80);
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // 4. Contrôles
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
@@ -38,7 +33,6 @@ function init() {
     controls.target.set(0, -12, 0); 
     controls.update();
 
-    // 5. Setup fonctions
     setupOutline();
     setupButtons();
 
@@ -110,28 +104,17 @@ async function composeSkins(urls) {
 async function refreshProject() {
     const list = document.getElementById('layer-list');
     list.innerHTML = "";
-    
     if (layers.length === 0) {
         viewer.skinImg.src = EMPTY_SKIN;
         toggleOutline(true);
         return;
     }
-
     toggleOutline(false);
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
-
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
-        list.innerHTML += `
-            <div class="layer-item">
-                <span>✨ ${layer.name}</span>
-                <div class="layer-controls">
-                    <button onclick="moveLayer(${idx}, 1)">↑</button>
-                    <button onclick="moveLayer(${idx}, -1)">↓</button>
-                    <button class="delete-layer" onclick="removeLayer(${idx})">❌</button>
-                </div>
-            </div>`;
+        list.innerHTML += `<div class="layer-item"><span>✨ ${layer.name}</span><div class="layer-controls"><button onclick="moveLayer(${idx}, 1)">↑</button><button onclick="moveLayer(${idx}, -1)">↓</button><button class="delete-layer" onclick="removeLayer(${idx})">❌</button></div></div>`;
     });
 }
 
