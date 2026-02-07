@@ -1,12 +1,12 @@
 let viewer;
 let controls;
-let layers = []; // Tableau pour {id, name, url}
+let layers = [];
 
 function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // 1. Initialisation avec le moteur (Inspiré de ton code fonctionnel)
+    // Initialisation
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -14,7 +14,7 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // Configuration pour la netteté UHD (NearestFilter)
+    // --- FIX QUALITÉ UHD (Pixel Perfect) ---
     viewer.renderer.magFilter = THREE.NearestFilter;
     viewer.renderer.minFilter = THREE.NearestFilter;
 
@@ -24,25 +24,27 @@ function init() {
     controls.target.set(0, -15, 0);
     controls.enableDamping = true;
 
-    // 2. CRÉATION DU CONTOUR (Anti-boucle infinie)
+    // --- CRÉATION SÉCURISÉE DU CONTOUR ---
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
-    const bodyParts = [];
+    const realParts = [];
     
+    // On liste d'abord les membres SANS les modifier pour éviter la boucle infinie
     viewer.playerObject.traverse((child) => {
         if (child.isMesh && child.name !== "outline_part") {
-            bodyParts.push(child);
+            realParts.push(child);
         }
     });
 
-    bodyParts.forEach((part) => {
+    // Maintenant on ajoute les contours
+    realParts.forEach((part) => {
         const outlineMesh = part.clone();
         outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.set(1.01, 1.01, 1.01); // Contour très fin (UHD ready)
+        outlineMesh.scale.set(1.01, 1.01, 1.01); // Contour très fin (ajuste si besoin)
         outlineMesh.name = "outline_part";
         part.add(outlineMesh);
     });
 
-    // 3. Gestion des boutons d'ajout
+    // Actions
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
             layers.push({ id: Date.now(), name: btn.dataset.name, url: btn.dataset.url });
@@ -50,7 +52,6 @@ function init() {
         };
     });
 
-    // 4. Gestion du bouton Télécharger
     document.getElementById('download-btn').onclick = downloadSkin;
 
     function renderLoop() {
@@ -61,7 +62,7 @@ function init() {
     renderLoop();
 }
 
-// --- MOTEUR DE FUSION UHD SANS LIMITE ---
+// --- FUSION UHD SANS LIMITE DE PIXELS ---
 async function composeSkins(urls) {
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -69,12 +70,14 @@ async function composeSkins(urls) {
             img.crossOrigin = "anonymous";
             img.src = url;
             img.onload = () => resolve(img);
+            img.onerror = () => resolve(null); // Évite de bloquer si une image manque
         });
     });
 
-    const images = await Promise.all(promises);
+    const images = (await Promise.all(promises)).filter(img => img !== null);
+    if (images.length === 0) return null;
 
-    // Détection de la plus haute résolution présente
+    // Détection auto de la taille max (256, 512, etc.)
     const maxWidth = Math.max(...images.map(img => img.width));
     const maxHeight = Math.max(...images.map(img => img.height));
 
@@ -82,9 +85,7 @@ async function composeSkins(urls) {
     canvas.width = maxWidth;
     canvas.height = maxHeight;
     const ctx = canvas.getContext('2d');
-    
-    // Pixel Perfect : pas de lissage
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false; // Garde les pixels UHD nets
 
     images.forEach(img => {
         ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
@@ -99,35 +100,33 @@ async function refreshProject() {
 
     if (layers.length === 0) {
         viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
-        toggleOutline(true);
+        toggleOutline(true); // Affiche le contour blanc si vide
         return;
     }
 
-    toggleOutline(false);
+    toggleOutline(false); // Cache le contour si un skin est chargé
     const mergedSkin = await composeSkins(layers.map(l => l.url));
-    viewer.skinImg.src = mergedSkin;
+    if (mergedSkin) viewer.skinImg.src = mergedSkin;
 
-    // Interface (Du haut vers le bas)
-    [...layers].reverse().forEach((layer) => {
-        const idx = layers.indexOf(layer);
+    [...layers].reverse().forEach((layer, index) => {
+        const realIdx = layers.indexOf(layer);
         list.innerHTML += `
             <div class="layer-item">
                 <span>✨ ${layer.name}</span>
                 <div class="layer-controls">
-                    <button onclick="moveLayer(${idx}, 1)">↑</button>
-                    <button onclick="moveLayer(${idx}, -1)">↓</button>
-                    <button class="delete-layer" onclick="removeLayer(${idx})">❌</button>
+                    <button onclick="moveLayer(${realIdx}, 1)">↑</button>
+                    <button onclick="moveLayer(${realIdx}, -1)">↓</button>
+                    <button class="delete-layer" onclick="removeLayer(${realIdx})">❌</button>
                 </div>
             </div>`;
     });
 }
 
-// --- FONCTIONS UTILITAIRES ---
 async function downloadSkin() {
-    if (layers.length === 0) return alert("Aucun calque à télécharger !");
+    if (layers.length === 0) return alert("Rien à télécharger !");
     const data = await composeSkins(layers.map(l => l.url));
     const link = document.createElement('a');
-    link.download = 'skin_final_uhd.png';
+    link.download = 'skin_uhd_final.png';
     link.href = data;
     link.click();
 }
