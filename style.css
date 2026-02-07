@@ -1,4 +1,4 @@
-body { margin: 0; background: #121212; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+body { margin: 0; background: #121212; color: white; font-family: sans-serif; overflow: hidden; }
 .app-container { display: flex; height: 100vh; }
 
 .sidebar, .layers-panel { 
@@ -9,6 +9,7 @@ body { margin: 0; background: #121212; color: white; font-family: 'Segoe UI', sa
 #viewer-container { 
     flex-grow: 1; display: flex; align-items: center; 
     justify-content: center; background: radial-gradient(circle, #333, #000); 
+    min-height: 400px;
 }
 
 canvas { width: 100%; height: 100%; outline: none; cursor: grab; }
@@ -18,7 +19,7 @@ canvas { width: 100%; height: 100%; outline: none; cursor: grab; }
     width: 100%; background: #2a2a2a; color: #fff; border: 1px solid #444; 
     padding: 10px; margin-top: 5px; cursor: pointer; text-align: left; border-radius: 4px;
 }
-.add-btn:hover { border-color: #007bff; background: #333; }
+.add-btn:hover { border-color: #007bff; }
 
 .layer-item { 
     background: #252525; padding: 10px; margin-bottom: 5px; 
@@ -26,7 +27,6 @@ canvas { width: 100%; height: 100%; outline: none; cursor: grab; }
     align-items: center; font-size: 13px; border: 1px solid #333;
 }
 
-.layer-controls button { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; }
-.layer-controls button:hover { color: #007bff; }
+.layer-controls button { background: none; border: none; color: #888; cursor: pointer; }
 
-#download-btn { margin-top: auto; padding: 15px; background: #28a745; border: none; color: #fff; font-weight: bold; cursor: pointer; border-radius: 4px; }
+#download-btn { margin-top: auto; padding: 15px; background: #28a745; border: none; color: #fff; font-weight: bold; cursor: pointer; }
