@@ -6,7 +6,7 @@ function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // Initialisation du moteur
+    // 1. Initialisation du moteur skinview3d
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -14,17 +14,23 @@ function init() {
         skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
     });
 
-    // ACTIVATION DE LA MARCHE
+    // 2. Centrage de la caméra sur le buste (Y = -12)
+    viewer.camera.position.set(0, -12, 40);
+
+    // 3. Activation de l'animation de marche
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // Configuration des contrôles caméra
+    // 4. Configuration des contrôles Orbit (r104)
     controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
     controls.rotateSpeed = 0.15;
     controls.zoomSpeed = 0.5;
-    controls.target.set(0, -15, 0);
     controls.enableDamping = true;
+    
+    // On force le pivot de la caméra au centre du corps
+    controls.target.set(0, -12, 0); 
+    controls.update();
 
-    // Système de Contour (Outline)
+    // 5. Système de Contour (Outline) au chargement
     const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
     const bodyParts = [];
     
@@ -40,24 +46,40 @@ function init() {
         part.add(outlineMesh);
     });
 
-    // Boutons d'ajout
+    // 6. Gestion des boutons d'ajout de calques
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => {
-            layers.push({ id: Date.now(), name: btn.dataset.name, url: btn.dataset.url });
+            layers.push({ 
+                id: Date.now(), 
+                name: btn.dataset.name, 
+                url: btn.dataset.url 
+            });
             refreshProject();
         };
     });
 
-    // Logique du bouton Télécharger
+    // 7. Logique du bouton Télécharger
     document.getElementById('download-btn').onclick = () => {
-        if (layers.length === 0) return alert("Ajoute des éléments avant de télécharger !");
+        if (layers.length === 0) return alert("Le skin est vide !");
         const link = document.createElement('a');
-        link.download = 'skin-minecraft-custom.png';
+        link.download = 'minecraft-skin-custom.png';
         link.href = viewer.skinImg.src;
         link.click();
     };
+
+    // 8. Ajustement automatique si on redimensionne la fenêtre
+    window.addEventListener('resize', () => {
+        const newWidth = parent.offsetWidth;
+        const newHeight = parent.offsetHeight;
+        viewer.width = newWidth;
+        viewer.height = newHeight;
+        viewer.renderer.setSize(newWidth, newHeight);
+        viewer.camera.aspect = newWidth / newHeight;
+        viewer.camera.updateProjectionMatrix();
+    });
 }
 
+// Moteur de Fusion UHD (Pixel Perfect)
 async function composeSkins(urls) {
     const promises = urls.map(url => {
         return new Promise((resolve) => {
@@ -76,7 +98,7 @@ async function composeSkins(urls) {
     canvas.width = maxWidth;
     canvas.height = maxHeight;
     const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false; // Désactive le flou
 
     images.forEach(img => {
         ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
@@ -89,16 +111,19 @@ async function refreshProject() {
     const list = document.getElementById('layer-list');
     list.innerHTML = "";
 
+    // Si aucun calque, on remet le skin vide avec contour blanc
     if (layers.length === 0) {
         viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
         toggleOutline(true);
         return;
     }
 
+    // Si calques présents, on fusionne et on cache le contour blanc
     toggleOutline(false);
     const mergedSkin = await composeSkins(layers.map(l => l.url));
     viewer.skinImg.src = mergedSkin;
 
+    // Mise à jour de l'interface visuelle des calques
     [...layers].reverse().forEach((layer) => {
         const idx = layers.indexOf(layer);
         list.innerHTML += `
@@ -133,4 +158,5 @@ function toggleOutline(visible) {
     });
 }
 
+// Lancement au chargement de la page
 window.onload = init;
