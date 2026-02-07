@@ -36,3 +36,25 @@ body { margin: 0; background: #121212; color: white; font-family: sans-serif; ov
 .remove-btn { background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 3px; }
 
 #download-btn { margin-top: auto; padding: 15px; background: #28a745; border: none; color: white; font-weight: bold; cursor: pointer; }
+
+.layer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #333;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.delete-layer {
+    background: none;
+    border: none;
+    color: #ff4444;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-layer:hover {
+    color: #ff0000;
+}
