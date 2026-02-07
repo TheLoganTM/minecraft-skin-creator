@@ -3,7 +3,8 @@ const PROXY = "https://corsproxy.io/?";
 
 function init() {
     const container = document.getElementById("viewer-container");
-    // Initialisation via la librairie chargée dans le HTML
+    
+    // Initialisation version stable
     viewer = new skinview3d.SkinViewer({
         canvas: document.getElementById("skin_container"),
         width: container.offsetWidth,
@@ -11,9 +12,11 @@ function init() {
         skin: "https://bsat999.github.io/skinview3d/img/steve.png"
     });
 
-    viewer.animations.add(skinview3d.IdleAnimation);
+    // Animation et contrôles
+    viewer.loadAnimation(skinview3d.IdleAnimation);
     viewer.controls.enableRotate = true;
 
+    // Boutons de la bibliothèque
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => addLayer(btn.dataset.url, btn.dataset.name);
     });
@@ -67,15 +70,14 @@ function addLayer(url, name) {
 function download() {
     const link = document.createElement('a');
     link.download = 'skin_final.png';
-    link.href = viewer.skinCanvas.toDataURL();
+    link.href = viewer.canvas.toDataURL(); // Changement ici : viewer.canvas
     link.click();
 }
 
-// On lance quand la page est prête
 window.onload = init;
 window.onresize = () => {
-    const container = document.getElementById("viewer-container");
     if(viewer) {
+        const container = document.getElementById("viewer-container");
         viewer.width = container.offsetWidth;
         viewer.height = container.offsetHeight;
     }
