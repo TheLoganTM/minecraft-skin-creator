@@ -1,6 +1,19 @@
-body { margin: 0; background: #121212; color: white; font-family: sans-serif; overflow: hidden; }
-.app-container { display: flex; height: 100vh; width: 100vw; }
+/* --- Mise en page globale --- */
+body { 
+    margin: 0; 
+    background: #121212; 
+    color: white; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    overflow: hidden; 
+}
 
+.app-container { 
+    display: flex; 
+    height: 100vh; 
+    width: 100vw; 
+}
+
+/* --- Colonnes latérales (Sidebar & Calques) --- */
 .sidebar, .layers-panel { 
     width: 260px; 
     background: #1a1a1a; 
@@ -9,218 +22,117 @@ body { margin: 0; background: #121212; color: white; font-family: sans-serif; ov
     display: flex; 
     flex-direction: column; 
     z-index: 5;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
+/* --- Zone du Viewer 3D (Centre) --- */
 #viewer-container { 
     flex-grow: 1; 
     position: relative;
     background: radial-gradient(circle, #333, #000); 
 }
 
-/* Le conteneur 3D doit prendre toute la place */
-#skin_container { width: 100%; height: 100%; }
-
-.category span { display: block; font-size: 11px; color: #666; text-transform: uppercase; margin-top: 15px; }
-.add-btn { 
-    width: 100%; background: #2a2a2a; color: #fff; border: 1px solid #444; 
-    padding: 10px; margin-top: 5px; cursor: pointer; text-align: left; border-radius: 4px; 
+/* Important : Le conteneur 3D doit remplir tout l'espace disponible */
+#skin_container { 
+    width: 100%; 
+    height: 100%; 
 }
-.add-btn:hover { border-color: #007bff; }
+
+/* --- Éléments de la Bibliothèque (Gauche) --- */
+h2, h3 { 
+    margin-top: 0; 
+    font-weight: 300; 
+    color: #007bff; 
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.category span { 
+    display: block; 
+    font-size: 11px; 
+    color: #666; 
+    text-transform: uppercase; 
+    margin-top: 15px; 
+    margin-bottom: 5px;
+}
+
+.add-btn { 
+    width: 100%; 
+    background: #2a2a2a; 
+    color: #fff; 
+    border: 1px solid #444; 
+    padding: 12px; 
+    margin-top: 8px; 
+    cursor: pointer; 
+    text-align: left; 
+    border-radius: 4px; 
+    transition: all 0.2s ease;
+}
+
+.add-btn:hover { 
+    border-color: #007bff; 
+    background: #333;
+    transform: translateX(5px);
+}
+
+/* --- Éléments de la liste des Calques (Droite) --- */
+#layer-list {
+    margin-top: 10px;
+}
 
 .layer-item { 
-    background: #252525; padding: 10px; margin-bottom: 5px; border-radius: 4px; 
-    display: flex; justify-content: space-between; align-items: center; 
-    border-left: 3px solid #007bff;
+    background: #252525; 
+    padding: 12px; 
+    margin-bottom: 8px; 
+    border-radius: 4px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-left: 4px solid #007bff;
+    animation: fadeIn 0.3s ease;
 }
 
-.remove-btn { background: #cc0000; color: white; border: none; cursor: pointer; border-radius: 3px; }
-
-#download-btn { margin-top: auto; padding: 15px; background: #28a745; border: none; color: white; font-weight: bold; cursor: pointer; }
-
-.layer-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #333;
-    padding: 10px;
-    margin-bottom: 5px;
-    border-radius: 4px;
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.delete-layer {
-    background: none;
-    border: none;
-    color: #ff4444;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.delete-layer:hover {
-    color: #ff0000;
-}
-
-let viewer;
-let controls;
-let outlineGroup;
-let layers = []; // Tableau pour stocker nos calques {id, name, url}
-
-function init() {
-    const container = document.getElementById("skin_container");
-    const parent = document.getElementById("viewer-container");
-
-    viewer = new skinview3d.SkinViewer({
-        domElement: container,
-        width: parent.offsetWidth,
-        height: parent.offsetHeight,
-        skin: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII="
-    });
-
-    controls = new THREE.OrbitControls(viewer.camera, viewer.renderer.domElement);
-    controls.rotateSpeed = 0.15; 
-    controls.zoomSpeed = 0.5;
-    controls.target.set(0, -15, 0); 
-    controls.enableDamping = true;
-
-    // Création du contour unique
-    const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
-    viewer.playerObject.traverse((child) => {
-        if (child.isMesh) {
-            const outlineMesh = child.clone();
-            outlineMesh.material = outlineMaterial;
-            outlineMesh.scale.multiplyScalar(1.07);
-            outlineMesh.name = "outline_part";
-            child.add(outlineMesh);
-        }
-    });
-
-    function renderLoop() {
-        requestAnimationFrame(renderLoop);
-        controls.update(); 
-        if (typeof skinview3d.WalkingAnimation === 'function') {
-            skinview3d.WalkingAnimation(viewer.playerObject, Date.now() / 1000);
-        }
-        viewer.renderer.render(viewer.scene, viewer.camera);
-    }
-    renderLoop();
-
-    // Gestion des boutons d'ajout
-    document.querySelectorAll('.add-btn').forEach(btn => {
-        btn.onclick = () => {
-            const layer = {
-                id: Date.now(),
-                name: btn.dataset.name,
-                url: btn.dataset.url
-            };
-            layers.push(layer);
-            refreshProject();
-        };
-    });
-}
-
-// Rafraîchit tout : le rendu 3D et la liste visuelle
-async function refreshProject() {
-    const list = document.getElementById('layer-list');
-    list.innerHTML = "";
-
-    if (layers.length === 0) {
-        // Retour mode fantôme
-        viewer.skinImg.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMREh0XAXC7pAAAABl0RVh0Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAhSURBVHja7cEBDAAAAMAgP9NHBFfBAAAAAAAAAAAAAMBuDqAAAByvS98AAAAASUVORK5CYII=";
-        toggleOutline(true);
-        return;
-    }
-
-    toggleOutline(false);
-
-    // 1. Générer le skin fusionné (le dernier calque de la liste est au-dessus)
-    const mergedSkin = await composeSkins(layers.map(l => l.url));
-    viewer.skinImg.src = mergedSkin;
-
-    // 2. Afficher la liste (du haut vers le bas)
-    // On inverse pour que le calque du "dessus" soit en haut de la liste
-    [...layers].reverse().forEach((layer, index) => {
-        const idx = layers.indexOf(layer);
-        list.innerHTML += `
-            <div class="layer-item">
-                <span>${layer.name}</span>
-                <div class="layer-controls">
-                    <button onclick="moveLayer(${idx}, 1)">↑</button>
-                    <button onclick="moveLayer(${idx}, -1)">↓</button>
-                    <button class="delete-layer" onclick="removeLayer(${idx})">❌</button>
-                </div>
-            </div>
-        `;
-    });
-}
-
-// Fusionne les images PNG sur un Canvas 64x64
-function composeSkins(urls) {
-    return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
-        const ctx = canvas.getContext('2d');
-        let loaded = 0;
-
-        urls.forEach(url => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = url;
-            img.onload = () => {
-                ctx.drawImage(img, 0, 0);
-                loaded++;
-                if (loaded === urls.length) resolve(canvas.toDataURL());
-            };
-        });
-    });
-}
-
-function moveLayer(index, direction) {
-    const newIndex = index + direction;
-    if (newIndex >= 0 && newIndex < layers.length) {
-        const temp = layers[index];
-        layers[index] = layers[newIndex];
-        layers[newIndex] = temp;
-        refreshProject();
-    }
-}
-
-function removeLayer(index) {
-    layers.splice(index, 1);
-    refreshProject();
-}
-
-function toggleOutline(visible) {
-    viewer.playerObject.traverse((child) => {
-        if (child.name === "outline_part") child.visible = visible;
-    });
-}
-
-window.onload = init;
-
+/* Contrôles à l'intérieur d'un calque */
 .layer-controls {
     display: flex;
     gap: 5px;
 }
+
 .layer-controls button {
     background: #444;
     color: white;
     border: none;
-    padding: 2px 8px;
+    padding: 4px 8px;
     cursor: pointer;
     border-radius: 3px;
+    font-size: 12px;
+    transition: background 0.2s;
 }
 
-.main-btn {
-    background-color: #2ecc71;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    width: 100%;
-    margin-bottom: 15px;
+.layer-controls button:hover {
+    background: #555;
 }
-.main-btn:hover {
-    background-color: #27ae60;
+
+.delete-layer { 
+    color: #ff4444 !important; 
+    font-weight: bold;
+}
+
+.delete-layer:hover {
+    background: #600 !important;
+}
+
+/* --- Scrollbar personnalisée pour les panneaux --- */
+.sidebar::-webkit-scrollbar, .layers-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb, .layers-panel::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 10px;
 }
