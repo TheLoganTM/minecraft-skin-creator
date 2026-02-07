@@ -5,7 +5,13 @@ function init() {
     const container = document.getElementById("skin_container");
     const parent = document.getElementById("viewer-container");
 
-    // Initialisation basée sur ton fichier skin_viewer.js
+    // Sécurité : vérification du chargement de la lib
+    if (typeof skinview3d === 'undefined') {
+        console.error("Le fichier skin_viewer.js n'est pas détecté !");
+        return;
+    }
+
+    // Initialisation
     viewer = new skinview3d.SkinViewer({
         domElement: container,
         width: parent.offsetWidth,
@@ -13,10 +19,10 @@ function init() {
         skin: "https://bsat999.github.io/skinview3d/img/steve.png"
     });
 
-    // Activer l'animation de marche par défaut
+    // On lance une animation pour donner de la vie
     viewer.animation = skinview3d.WalkingAnimation;
 
-    // Configuration des boutons
+    // Écoute des boutons de la colonne de gauche
     document.querySelectorAll('.add-btn').forEach(btn => {
         btn.onclick = () => addLayer(btn.dataset.url, btn.dataset.name);
     });
@@ -26,13 +32,16 @@ function init() {
 
 async function composeSkin() {
     const canvas = document.createElement('canvas');
-    canvas.width = 64; canvas.height = 64;
+    canvas.width = 64; 
+    canvas.height = 64;
     const ctx = canvas.getContext('2d');
 
     const layers = [...document.querySelectorAll('.layer-item')].reverse();
     ctx.clearRect(0, 0, 64, 64);
 
     for (const layer of layers) {
+        if (!layer.dataset.url) continue;
+        
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = PROXY + encodeURIComponent(layer.dataset.url);
@@ -42,28 +51,51 @@ async function composeSkin() {
             img.onerror = res;
         });
     }
-    // Mise à jour de la texture 3D
-    viewer.skinImg.src = canvas.toDataURL();
+    
+    // On met à jour l'image du skin dans le viewer 3D
+    const dataUrl = canvas.toDataURL();
+    viewer.skinImg.src = dataUrl;
 }
 
 function addLayer(url, name) {
     const list = document.getElementById('layer-list');
+    
+    // Création du calque dans la colonne de droite
     const div = document.createElement('div');
     div.className = 'layer-item';
     div.dataset.url = url;
-    div.innerHTML = `<span>${name}</span><button class="remove-btn">✕</button>`;
+    div.dataset.name = name;
+    div.innerHTML = `
+        <span>${name}</span>
+        <button class="remove-btn">✕</button>
+    `;
 
-    div.querySelector('.remove-btn').onclick = () => { div.remove(); composeSkin(); };
+    div.querySelector('.remove-btn').onclick = () => {
+        div.remove();
+        composeSkin();
+    };
+
     list.insertBefore(div, list.firstChild);
+    
+    // On relance la fusion des images
     composeSkin();
 }
 
 function download() {
     const link = document.createElement('a');
-    link.download = 'mon_skin.png';
-    // Accès au canvas interne créé par skin_viewer.js
-    link.href = viewer.renderer.domElement.toDataURL();
+    link.download = 'mon_skin_zelda.png';
+    // On télécharge le résultat de la fusion (le canvas 2D) ou le rendu 3D
+    link.href = viewer.renderer.domElement.toDataURL("image/png");
     link.click();
 }
 
 window.onload = init;
+
+// Redimensionnement automatique si on change la taille de la fenêtre
+window.onresize = () => {
+    if (viewer) {
+        const parent = document.getElementById("viewer-container");
+        viewer.width = parent.offsetWidth;
+        viewer.height = parent.offsetHeight;
+    }
+};
