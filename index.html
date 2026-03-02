@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="0">
+    <title>Minecraft Skin Creator - Logan EDITION</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r104/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r104/examples/js/controls/OrbitControls.js"></script>
+    <script src="skin_viewer.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="rideau-entree">
+        <div class="contenu-rideau">
+            <h1>Générateur de skin Esperia</h1>
+            <button id="btn-entrer" onclick="ouvrirGenerateur()">OUVRIR LA GARDE-ROBE</button>
+        </div>
+    </div>
+
+    <div class="app-container" id="main-app" style="display:none;">
+        
+        <aside class="sidebar">
+            <h2>ÉLÉMENTS</h2>
+            <div class="menu-categories">
+                <p style="padding:20px; color:#888; font-style:italic;">Chargement de la garde-robe...</p>
+            </div>
+        </aside>
+
+        <main id="viewer-container">
+            <div class="animation-controls">
+                <button onclick="setAnimation('idle')">Statique</button>
+                <button onclick="setAnimation('walk')">Marcher</button>
+                <button onclick="setAnimation('run')">Courir</button>
+            </div>
+
+            <div class="zoom-controls">
+                <button id="btn-zoom-in" onclick="applyZoom(-1)">+</button>
+                <button id="btn-zoom-out" onclick="applyZoom(1)">-</button>
+            </div>
+
+            <div id="skin_container"></div>
+
+            <div class="camera-controls">
+                <button onclick="setCameraView('plongee')">Plongée</button>
+                <button onclick="setCameraView('face')">Face</button>
+            </div>
+            
+            </main>
+
+        <aside class="layers-panel">
+            <h3>CALQUES</h3>
+            <div id="layer-list"></div>
+            <button id="download-btn" class="main-btn-download">💾 TÉLÉCHARGER LE SKIN</button>
+        </aside>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
